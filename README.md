@@ -101,5 +101,5 @@ visitor-gate-pass-system/
 
 ## 📌 Project Info
 
-- **Project:** #33 — Visitor Gate Pass System
+- **Project:**  — Visitor Gate Pass System
 - **Developer:** Krish Kumar Rathi
