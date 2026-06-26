@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visitor Gate Pass System</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; color: #1e293b; }
+
+  /* NAV */
+  nav { background: #1e3a5f; color: white; padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; }
+  nav .logo { font-weight: 700; font-size: 16px; }
+  nav .user-info { font-size: 13px; color: #94a3b8; display: flex; align-items: center; gap: 12px; }
+  nav .user-info span { color: white; font-weight: 500; }
+  #btn-logout { background: #dc2626; color: white; border: none; padding: 5px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+
+  /* PAGES */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* LOGIN */
+  #page-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a5f 0%, #2e75b6 100%); }
+  .login-card { background: white; border-radius: 12px; padding: 36px 32px; width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .login-card .icon { width: 52px; height: 52px; background: #dbeafe; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 24px; }
+  .login-card h2 { text-align: center; font-size: 20px; margin-bottom: 4px; }
+  .login-card p { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 24px; }
+
+  /* FORMS */
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 7px;
+    font-size: 13px; outline: none; transition: border 0.2s; background: white;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: #3b82f6; }
+
+  /* BUTTONS */
+  .btn { padding: 9px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.88; }
+  .btn-primary { background: #3b82f6; color: white; width: 100%; padding: 11px; }
+  .btn-success { background: #16a34a; color: white; }
+  .btn-danger  { background: #dc2626; color: white; }
+  .btn-info    { background: #0891b2; color: white; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* ALERT */
+  .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; display: none; }
+  .alert.show { display: block; }
+  .alert-danger  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .alert-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+  /* DASHBOARD */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+  .page-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #1e293b; }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: white; border-radius: 10px; padding: 18px; border: 1px solid #e2e8f0; }
+  .stat-card .val { font-size: 28px; font-weight: 700; }
+  .stat-card .lbl { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .stat-blue   .val { color: #2563eb; }
+  .stat-green  .val { color: #16a34a; }
+  .stat-yellow .val { color: #d97706; }
+
+  /* CARDS */
+  .card { background: white; border-radius: 10px; border: 1px solid #e2e8f0; overflow: hidden; margin-bottom: 20px; }
+  .card-header { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; font-weight: 600; font-size: 14px; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
+  .card-body { padding: 18px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f5f9; padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+  td { padding: 11px 14px; border-top: 1px solid #f1f5f9; color: #334155; }
+  tr:hover td { background: #f8fafc; }
+
+  /* BADGE */
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-pending  { background: #fef3c7; color: #92400e; }
+  .badge-approved { background: #dcfce7; color: #166534; }
+  .badge-rejected { background: #fee2e2; color: #991b1b; }
+  .badge-inside   { background: #dcfce7; color: #166534; }
+  .badge-exited   { background: #f1f5f9; color: #64748b; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  /* GATE RESULT */
+  .gate-result { border-radius: 10px; padding: 20px; margin-top: 16px; display: none; }
+  .gate-result.show { display: block; }
+  .gate-result .res-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .gate-result .res-sub   { font-size: 13px; margin-bottom: 14px; }
+  .gate-result .res-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 14px; }
+  .gate-result .res-details .det { }
+  .gate-result .res-details .det .det-label { font-size: 11px; opacity: 0.7; }
+  .gate-result .res-details .det .det-val   { font-size: 14px; font-weight: 600; }
+  .res-entry   { background: #dcfce7; color: #166534; border: 1.5px solid #86efac; }
+  .res-exit    { background: #dbeafe; color: #1e40af; border: 1.5px solid #93c5fd; }
+  .res-expired { background: #fef9c3; color: #854d0e; border: 1.5px solid #fde047; }
+  .res-invalid { background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; }
+
+  /* SEARCH ROW */
+  .search-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
+  .search-row input { padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 13px; outline: none; }
+  .search-row input:focus { border-color: #3b82f6; }
+
+  /* REQUEST LIST */
+  .req-item { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .req-item .req-name { font-weight: 600; font-size: 14px; }
+  .req-item .req-meta { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: #f1f5f9; padding: 4px; border-radius: 8px; width: fit-content; }
+  .tab { padding: 7px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: #64748b; border: none; background: none; }
+  .tab.active { background: white; color: #1e293b; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+  /* QR DISPLAY */
+  .qr-token-box { background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 14px; text-align: center; margin-top: 10px; }
+  .qr-token-box .token-val { font-family: monospace; font-size: 12px; color: #475569; word-break: break-all; margin-top: 6px; }
+  .qr-token-box .token-label { font-size: 12px; color: #64748b; font-weight: 600; }
+
+  /* LOADING */
+  .loading { text-align: center; padding: 30px; color: #94a3b8; font-size: 14px; }
+
+  @media (max-width: 700px) {
+    .grid-2, .stats-row, .search-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar" style="display:none">
+  <div class="logo">🔐 Gate Pass System</div>
+  <div class="user-info">
+    <span id="nav-name"></span>
+    <span id="nav-role" style="color:#94a3b8"></span>
+    <button id="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- PAGE: LOGIN -->
+<!-- ═══════════════════════════════════════ -->
+<div id="page-login" class="page active">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a5f,#2e75b6)">
+    <div class="login-card">
+      <div class="icon">🔐</div>
+      <h2>Gate Pass System</h2>
+      <p>Sign in to your account</p>
+      <div id="login-alert" class="alert alert-danger"></div>
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="login-email" placeholder="you@company.com" value="admin@gatepass.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" value="admin123">
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()">Sign in →</button>
+      <p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:16px">
+        Admin: admin@gatepass.com / admin123<br>
+        Employee: krish@gatepass.com / emp123
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- PAGE: EMPLOYEE -->
+<!-- ═══════════════════════════════════════ -->
+<div id="page-employee" class="page">
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" onclick="empTab('request')">Request Pass</button>
+      <button class="tab" onclick="empTab('mypasses')">My Requests</button>
+    </div>
+
+    <!-- Request Form -->
+    <div id="emp-request">
+      <div class="card">
+        <div class="card-header">✚ Request New Visitor Pass</div>
+        <div class="card-body">
+          <div id="req-alert" class="alert"></div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Visitor Name</label>
+              <input type="text" id="req-vname" placeholder="Rahul Sharma">
+            </div>
+            <div class="form-group">
+              <label>Contact Number</label>
+              <input type="text" id="req-contact" placeholder="9876543210">
+            </div>
+            <div class="form-group">
+              <label>Visitor Email (optional)</label>
+              <input type="email" id="req-email" placeholder="rahul@email.com">
+            </div>
+            <div class="form-group">
+              <label>ID Proof Type</label>
+              <select id="req-idtype">
+                <option>Aadhar Card</option>
+                <option>Passport</option>
+                <option>Driving License</option>
+                <option>Voter ID</option>
+                <option>PAN Card</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>ID Proof Number</label>
+              <input type="text" id="req-idnum" placeholder="XXXX-XXXX-XXXX">
+            </div>
+            <div class="form-group">
+              <label>Visit Date</label>
+              <input type="date" id="req-date">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Purpose of Visit</label>
+            <input type="text" id="req-purpose" placeholder="Meeting with HR team">
+          </div>
+          <button class="btn btn-success" onclick="submitPass()" style="width:100%;padding:11px">Submit Pass Request</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Passes -->
+    <div id="emp-mypasses" style="display:none">
+      <div class="card">
+        <div class="card-header">My Pass Requests <button class="btn btn-info btn-sm" onclick="loadMyPasses()">↻ Refresh</button></div>
+        <div class="card-body" id="my-passes-list">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- PAGE: ADMIN -->
+<!-- ═══════════════════════════════════════ -->
+<div id="page-admin" class="page">
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" onclick="adminTab('pending')">Pending Queue</button>
+      <button class="tab" onclick="adminTab('log')">Visitor Log</button>
+      <button class="tab" onclick="adminTab('gate')">Gate Scan</button>
+    </div>
+
+    <!-- Pending Queue -->
+    <div id="admin-pending">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card stat-blue"><div class="val" id="stat-total">-</div><div class="lbl">Total Passes Today</div></div>
+        <div class="stat-card stat-green"><div class="val" id="stat-inside">-</div><div class="lbl">Inside Now</div></div>
+        <div class="stat-card stat-yellow"><div class="val" id="stat-pending">-</div><div class="lbl">Pending Approval</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">Pending Pass Requests <button class="btn btn-info btn-sm" onclick="loadPending()">↻ Refresh</button></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Visitor</th><th>Contact</th><th>Host</th><th>Date</th><th>Purpose</th><th>Action</th></tr></thead>
+            <tbody id="pending-tbody"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visitor Log -->
+    <div id="admin-log" style="display:none">
+      <div class="card">
+        <div class="card-header">Entry / Exit Log</div>
+        <div class="card-body">
+          <div class="search-row">
+            <input type="date" id="log-date" placeholder="Filter by date" oninput="loadLog()">
+            <input type="text" id="log-visitor" placeholder="Search visitor name" oninput="loadLog()">
+            <input type="text" id="log-host" placeholder="Search host name" oninput="loadLog()">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Visitor</th><th>Host</th><th>Date</th><th>Entry</th><th>Exit</th><th>Guard</th><th>Status</th></tr></thead>
+            <tbody id="log-tbody"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gate Scan -->
+    <div id="admin-gate" style="display:none">
+      <div class="card">
+        <div class="card-header">🔍 Gate QR Scanner</div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>Enter QR Token</label>
+            <div style="display:flex;gap:10px">
+              <input type="text" id="gate-token" placeholder="Paste QR token here..." style="flex:1;font-family:monospace">
+              <button class="btn btn-primary" style="width:auto" onclick="doScan()">Scan →</button>
+            </div>
+          </div>
+          <div id="gate-result" class="gate-result"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+let TOKEN = null;
+let USER  = null;
+
+// ─── HELPERS ───
+function api(method, path, body=null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(TOKEN ? {'Authorization': `Bearer ${TOKEN}`} : {}) }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(API + path, opts).then(r => r.json());
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+}
+
+function showAlert(id, msg, type='danger') {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = `alert alert-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('en-IN', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+
+// ─── AUTH ───
+async function doLogin() {
+  const email = document.getElementById('login-email').value;
+  const pass  = document.getElementById('login-password').value;
+  if (!email || !pass) { showAlert('login-alert','Please enter email and password'); return; }
+
+  const form = new URLSearchParams();
+  form.append('username', email);
+  form.append('password', pass);
+
+  try {
+    const res = await fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form
+    });
+    const data = await res.json();
+    if (!res.ok) { showAlert('login-alert', data.detail || 'Login failed'); return; }
+
+    TOKEN = data.access_token;
+    USER  = { name: data.name, role: data.role };
+
+    document.getElementById('navbar').style.display = 'flex';
+    document.getElementById('nav-name').textContent = data.name;
+    document.getElementById('nav-role').textContent = '(' + data.role + ')';
+
+    if (data.role === 'admin') {
+      showPage('admin');
+      loadPending();
+    } else {
+      showPage('employee');
+      document.getElementById('req-date').valueAsDate = new Date();
+    }
+  } catch(e) {
+    showAlert('login-alert', 'Cannot connect to server. Is the backend running?');
+  }
+}
+
+function logout() {
+  TOKEN = null; USER = null;
+  document.getElementById('navbar').style.display = 'none';
+  showPage('login');
+}
+
+// ─── EMPLOYEE ───
+function empTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('emp-request').style.display   = tab === 'request'  ? 'block' : 'none';
+  document.getElementById('emp-mypasses').style.display  = tab === 'mypasses' ? 'block' : 'none';
+  if (tab === 'mypasses') loadMyPasses();
+}
+
+async function submitPass() {
+  const body = {
+    visitor_name:    document.getElementById('req-vname').value,
+    contact_number:  document.getElementById('req-contact').value,
+    visitor_email:   document.getElementById('req-email').value || null,
+    id_proof_type:   document.getElementById('req-idtype').value,
+    id_proof_number: document.getElementById('req-idnum').value,
+    visit_date:      document.getElementById('req-date').value,
+    purpose:         document.getElementById('req-purpose').value,
+  };
+  if (!body.visitor_name || !body.contact_number || !body.id_proof_number || !body.visit_date || !body.purpose) {
+    showAlert('req-alert','Please fill all required fields'); return;
+  }
+  const res = await api('POST', '/passes', body);
+  if (res.pass_id) {
+    showAlert('req-alert', '✅ Pass request submitted successfully!', 'success');
+    document.getElementById('req-vname').value = '';
+    document.getElementById('req-contact').value = '';
+    document.getElementById('req-idnum').value = '';
+    document.getElementById('req-purpose').value = '';
+  } else {
+    showAlert('req-alert', res.detail || 'Error submitting pass');
+  }
+}
+
+async function loadMyPasses() {
+  const list = document.getElementById('my-passes-list');
+  list.innerHTML = '<div class="loading">Loading...</div>';
+  const data = await api('GET', '/passes/my');
+  if (!data.length) { list.innerHTML = '<div class="loading">No pass requests yet.</div>'; return; }
+  list.innerHTML = data.map(p => `
+    <div class="req-item">
+      <div>
+        <div class="req-name">${p.visitor}</div>
+        <div class="req-meta">${p.visit_date} &bull; ${p.purpose}</div>
+        ${p.qr_token ? `<div class="qr-token-box"><div class="token-label">QR Token</div><div class="token-val">${p.qr_token}</div></div>` : ''}
+      </div>
+      <span class="badge badge-${p.status}">${p.status.toUpperCase()}</span>
+    </div>
+  `).join('');
+}
+
+// ─── ADMIN ───
+function adminTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('admin-pending').style.display = tab === 'pending' ? 'block' : 'none';
+  document.getElementById('admin-log').style.display     = tab === 'log'     ? 'block' : 'none';
+  document.getElementById('admin-gate').style.display    = tab === 'gate'    ? 'block' : 'none';
+  if (tab === 'log')  loadLog();
+}
+
+async function loadPending() {
+  const tbody = document.getElementById('pending-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading...</td></tr>';
+  const data = await api('GET', '/passes/pending');
+  document.getElementById('stat-pending').textContent = data.length;
+  document.getElementById('stat-total').textContent   = data.length;
+  document.getElementById('stat-inside').textContent  = '—';
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" class="loading">No pending requests.</td></tr>'; return; }
+  tbody.innerHTML = data.map(p => `
+    <tr id="row-${p.id}">
+      <td><strong>${p.visitor}</strong></td>
+      <td>${p.contact}</td>
+      <td>${p.host}</td>
+      <td>${p.visit_date}</td>
+      <td>${p.purpose}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-success btn-sm" onclick="approvePass('${p.id}')">Approve</button>
+        <button class="btn btn-danger btn-sm"  onclick="rejectPass('${p.id}')">Reject</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function approvePass(id) {
+  const res = await api('PATCH', `/passes/${id}/approve`);
+  if (res.qr_token) {
+    const row = document.getElementById('row-' + id);
+    row.cells[5].innerHTML = `<span class="badge badge-approved">APPROVED</span><div class="token-val" style="font-size:10px;color:#475569;font-family:monospace;margin-top:4px">${res.qr_token}</div>`;
+    const p = document.getElementById('stat-pending');
+    p.textContent = Math.max(0, parseInt(p.textContent) - 1);
+  } else {
+    alert(res.detail || 'Error approving pass');
+  }
+}
+
+async function rejectPass(id) {
+  const res = await api('PATCH', `/passes/${id}/reject`);
+  if (res.message) {
+    const row = document.getElementById('row-' + id);
+    row.cells[5].innerHTML = `<span class="badge badge-rejected">REJECTED</span>`;
+  } else {
+    alert(res.detail || 'Error rejecting pass');
+  }
+}
+
+async function loadLog() {
+  const tbody = document.getElementById('log-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading...</td></tr>';
+  const d = document.getElementById('log-date').value;
+  const v = document.getElementById('log-visitor').value;
+  const h = document.getElementById('log-host').value;
+  let url = '/visitors/log?';
+  if (d) url += `date_filter=${d}&`;
+  if (v) url += `visitor_name=${v}&`;
+  if (h) url += `host_name=${h}&`;
+  const data = await api('GET', url);
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="loading">No log entries found.</td></tr>'; return; }
+  tbody.innerHTML = data.map(l => `
+    <tr>
+      <td><strong>${l.visitor}</strong><br><small style="color:#94a3b8">${l.contact}</small></td>
+      <td>${l.host}</td>
+      <td>${l.visit_date}</td>
+      <td>${fmtDate(l.entry_time)}</td>
+      <td>${l.exit_time ? fmtDate(l.exit_time) : '<span style="color:#94a3b8">Still inside</span>'}</td>
+      <td>${l.guard}</td>
+      <td><span class="badge ${l.exit_time ? 'badge-exited' : 'badge-inside'}">${l.exit_time ? 'EXITED' : 'INSIDE'}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ─── GATE SCAN ───
+async function doScan() {
+  const token = document.getElementById('gate-token').value.trim();
+  if (!token) { alert('Please enter a QR token'); return; }
+  const res = await api('POST', '/gate/scan', { qr_token: token });
+  const box = document.getElementById('gate-result');
+  box.className = 'gate-result show';
+
+  const classes = {
+    ENTRY_RECORDED: 'res-entry',
+    EXIT_RECORDED:  'res-exit',
+    EXPIRED:        'res-expired',
+    INVALID:        'res-invalid',
+    NOT_APPROVED:   'res-invalid',
+    NOT_YET_VALID:  'res-expired',
+    ALREADY_USED:   'res-expired',
+  };
+
+  const icons = {
+    ENTRY_RECORDED: '✅',
+    EXIT_RECORDED:  '🚪',
+    EXPIRED:        '⚠️',
+    INVALID:        '❌',
+    NOT_APPROVED:   '⏳',
+    NOT_YET_VALID:  '📅',
+    ALREADY_USED:   '🔁',
+  };
+
+  box.className = `gate-result show ${classes[res.result] || 'res-invalid'}`;
+  let details = '';
+  if (res.visitor) details += `<div class="det"><div class="det-label">Visitor</div><div class="det-val">${res.visitor}</div></div>`;
+  if (res.host)    details += `<div class="det"><div class="det-label">Host</div><div class="det-val">${res.host}</div></div>`;
+  if (res.purpose) details += `<div class="det"><div class="det-label">Purpose</div><div class="det-val">${res.purpose}</div></div>`;
+  if (res.entry_time) details += `<div class="det"><div class="det-label">Entry Time</div><div class="det-val">${fmtDate(res.entry_time)}</div></div>`;
+
+  box.innerHTML = `
+    <div class="res-title">${icons[res.result] || '❓'} ${res.result.replace(/_/g,' ')}</div>
+    <div class="res-sub">${res.message}</div>
+    ${details ? `<div class="res-details">${details}</div>` : ''}
+  `;
+}
+
+// Enter key on gate token
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('req-date') && (document.getElementById('req-date').valueAsDate = new Date());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('gate-token') === document.activeElement) doScan();
+    if (e.key === 'Enter' && document.getElementById('login-password') === document.activeElement) doLogin();
+  });
+});
+</script>
+</body>
+</html>
